@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('store_website', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->smallIncrements('website_id');
+            $table->string('code', 32)->nullable()->unique()->comment('Code');
+            $table->string('name', 64)->nullable()->comment('Website Name');
         });
     }
 
