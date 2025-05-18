@@ -22,62 +22,35 @@ class VerifySalesNagios extends Command
      */
     protected $description = 'Command that runs a script which, for each store (both app and non-app), checks if there is an incident 
                               based on a specific criterion. If an incident is found, it returns a valid string for Nagios.
-                              
                               Comando que ejecuta un script donde para cada store (tanto app como no), observa si posee incidencia o no
                               en base a un criterio específico. Retorna en caso de incidencia un string válido para nagios';
 
     /**
      * Execute the console command.
-     * 
-     * Explicación del comando:
-     *  Leer los datos de la tabla datos.
-     * 
-     *  Comparar cada combinación store_id, app, hora con el valor de store_id = 1.
-     * 
-     *  Validar si pedido_minimos <= (pedido_minimos de store_id 1)/2.
-     * 
-     *  Obtener el nombre del store desde store_website por store_id.
-     * 
-     *  Construir la cadena de salida como: 
-     *     "store {nombre}, app={valor_app}, valor = {valor}"
-     * 
-     *  Al final, imprimir: WARNING - Incidencia ventas horas | store pt, app=0, valor = 300 | ...
-     *  Y retornar código de salida 1 (WARNING).
-     * 
-     *  Otros codigos de salida:
-     *  El plugin debe terminar con un código de salida específico que Nagios interpreta como el estado del servicio.
-     * 
-     *  	Código  Estado    Significado
-     *      0       OK        Todo está bien
-     *      1       WARNING   Hay una advertencia 
-     *      2       CRITICAL  Hay un problema grave 
-     *      3       UNKNOWN   Estado desconocido o error
-     * 
-     *  handle() retorna el código de salida que Nagios interpreta
      */
     public function handle()
     {
-        $this->info('== Start to execute command verify:sales-nagios =='); //Comienzo de ejecución de comando verify:sales-nagios
+        $this->info('== Start to execute command verify:sales-nagios ==');
 
         // 1. Cargar datos del CSV
-        $this->info('getCsvPath execute'); //Ejecución de getCsvPath
+        $this->info('getCsvPath execute');
         $csvPath = $this->getCsvPath();
         if (!$this->fileExists($csvPath)) {
-            $this->error("CSV file not found at: {$csvPath}"); //El archivo CSV no se encuentra en $csvPath
-            return 2; //CRITICAL - Hay un problema grave
+            $this->error("CSV file not found at: {$csvPath}");
+            return 2;
         }
         $this->info('Path of Excell file: ' . $csvPath);
 
-        $this->info('loadCsvData execute'); //Ejecución de loadCsvData
+        $this->info('loadCsvData execute');
         $data = collect($this->loadCsvData($csvPath));
         if ($data->isEmpty()) {
             $this->info("OK - CSV has no data.");
-            return 0; //OK - Todo está bien
+            return 0;
         }
-        $this->info('Data from excell charged, total elements: ' . $data->count()); //Datos cargados desde el csv excell, cantidad de elementos: count
+        $this->info('Data from excell charged, total elements: ' . $data->count());
 
         // 2. Cargar equivalencias de stores (desde tabla importada con SQL)
-        $this->info('storeNames execute'); //Ejecución de get datos de la BD (create_store_website_table)
+        $this->info('storeNames execute');
         $storeNames = $this->loadStoreNames();
 
         $this->previewStoreNames($storeNames);
@@ -92,7 +65,7 @@ class VerifySalesNagios extends Command
 
         // 5. Construir salida Nagios   
         $resultOutputNagios = $this->outputNagiosResult($incidents);
-        return $resultOutputNagios; //WARNING - Hay una advertencia
+        return $resultOutputNagios;
     }
 
 
@@ -255,19 +228,19 @@ class VerifySalesNagios extends Command
             $storeId = intval($row['store_id']);
 
             if ($storeId === 1) {
-                continue; // Saltar el store base. Salta a la siguiente iteración del foreach si $storeId === 1. Compara los distintos a si mismo
+                continue;
             }
 
             if (!isset($base[$key])) {
-                continue; // No hay base para comparar
+                continue;
             }
 
-            $value = round(floatval($row['pedidos_minimos'])); //Redondeamos porque son pedidos por unidad
+            $value = round(floatval($row['pedidos_minimos']));
             $baseValue = $base[$key];
 
             //Verify issue
             if ($value <= ($baseValue / 2)) {
-                $nameStoreFromTable = $storeNames[$storeId]->code ?? "store_id {$storeId}"; //Retornará Si $storeId = 3 --> "it", si no localiza el code: "store_id 3".
+                $nameStoreFromTable = $storeNames[$storeId]->code ?? "store_id {$storeId}";
                 $incidents[] = "store {$nameStoreFromTable}, app={$row['app']}, valor = {$value}";
             }  
         }
